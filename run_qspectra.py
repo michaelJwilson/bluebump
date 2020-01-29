@@ -10,8 +10,14 @@ exps  = [x.split('/')[-1] for x in lines]
 lines = [x + '/truth-64-{}.fits'.format(x.split('/')[-1]) for x in lines]
 
 for i, x in enumerate(lines):
-  cmd = 'quickspectra -i ' + x + ' -o ' + os.environ['CSCRATCH'] + '/desi/bluebump/spectra-64-{}.fits'.format(exps[i])
+  ofile = os.environ['CSCRATCH'] + '/desi/bluebump/spectra-64-{}.fits'.format(exps[i])
 
-  print(cmd)
+  if os.path.exists(ofile):
+    print('{} exists.'.format(ofile))
 
-  os.system(cmd)
+  else:
+    cmd   = 'quickspectra -i ' + x + ' -o ' + os.environ['CSCRATCH'] + '/desi/bluebump/spectra-64-{}.fits'.format(exps[i])
+
+    print(cmd)
+
+    os.system(cmd)
