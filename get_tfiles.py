@@ -1,17 +1,19 @@
 import glob
 
 
-root = '/global/projecta/projectdirs/desi/datachallenge/redwood/spectro/redux/redwood/spectra-64/'
+root = '/global/projecta/projectdirs/desi/datachallenge/redwood/targets/'
 
 dirs = glob.glob(root + '*')
+dirs.remove('/global/projecta/projectdirs/desi/datachallenge/redwood/targets/qa')
+
+print(dirs)
 
 ts   = []
 es   = []
 
 for _ in dirs:
  files = glob.glob(_ + '/*')    
-
- ts += files
+ ts   += files
  
 for _ in ts:
  exp   = _.split('/')[-1]
