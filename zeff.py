@@ -21,7 +21,7 @@ tzs     = dat.data['TRUEZ']
 
 print('\n')
 
-for line, color, label in zip([1216., 3626., 4000.], ['g', 'c', 'm'], [r'Ly-$\alpha$', 'OII', r'H-$\alpha$']):
+for line, color, label in zip([1216., 3346.79, 3626., 3889.0, 4072.3, 4364.436], ['g', 'y', 'c', 'r', 'm', 'k'], [r'Ly-$\alpha$', 'Ne V', 'OII', 'HeI', 'SII', 'OIII']):
   lo            = 4300. / line - 1.0
   hi            = 4500. / line - 1.0
   
