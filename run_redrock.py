@@ -3,9 +3,9 @@ import glob
 
 
 # S/N degraded. 
-run   = 'degraded'
-files = glob.glob('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/*')
-files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/redrock')
+# run   = 'degraded'
+# files = glob.glob('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/*')
+# files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/redrock')
 
 # Throughput with dip.
 run   = 'thrudip'
@@ -35,6 +35,7 @@ for i, x in enumerate(files):
       print('{} exists.'.format(ofile))
 
     else:
+      ##  rrdesi_mpi
       cmd   = 'rrdesi ' + x + ' -o ' + ofile + ' -z ' + zbest
 
       print(cmd)

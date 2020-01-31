@@ -26,11 +26,12 @@ dthru    = interpolate.interp1d(dat[:,0], dat[:,1], fill_value=1.0, bounds_error
 ##  DESI b throughput
 dat      = Table(fits.open('data/throughput/thru-b.fits')[1].data)
 
-pl.plot(dat['wavelength'], dthru(dat['wavelength']), 'r')
-
+pl.plot(dat['wavelength'], dat['throughput'], 'k')
 
 ##  New throughput
 dat['throughput'] *= dthru(dat['wavelength'])
+
+pl.plot(dat['wavelength'], dat['throughput'], 'r')
 
 dat.write('data/throughput/thru-b-dip.fits', format='fits', overwrite=True)
 
