@@ -8,33 +8,33 @@ import glob
 # files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/redrock')
 
 # Throughput with dip.
-run   = 'thrudip'
-files = glob.glob('/global/cscratch1/sd/mjwilson/desi/bluebump/thrudip/*')
-files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/thrudip/redrock')
+# run   = 'thrudip'
+# files = glob.glob('/global/cscratch1/sd/mjwilson/desi/bluebump/thrudip/*')
+# files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/thrudip/redrock')
 
 # Redwood rerun.
-# run   = 'redwood'
-# file  = open('redwood_spectra_files.txt', mode = 'r')
-# files = file.readlines()
-# files = [x.replace('\n', '') for x in files]
-# file.close()
+run   = 'redwood'
+file  = open('redwood_spectra_files.txt', mode = 'r')
+files = file.readlines()
+files = [x.replace('\n', '') for x in files]
+file.close()
 
 for i, x in enumerate(files):
-  #_     = x.split('/')[-1]
-  #x     = x + '/spectra-64-{}.fits'.format(_)
+  _     = x.split('/')[-1]
+  x     = x + '/spectra-64-{}.fits'.format(_)
 
   # Degraded or thrudip. 
-  _      = x.split('/')[-1].split('-')[2].replace('.fits', '')
+  # _   = x.split('/')[-1].split('-')[2].replace('.fits', '')
 
   # Only reduce degraded spectra for which the unaltered exists.
-  if os.path.exists(os.environ['CSCRATCH'] + '/desi/bluebump/redwood/redrock/redrock-64-{}.h5'.format(_)):
-    ofile = os.environ['CSCRATCH'] + '/desi/bluebump/{}/redrock/redrock-64-{}.h5'.format(run, _)
-    zbest = os.environ['CSCRATCH'] + '/desi/bluebump/{}/redrock/zbest-64-{}.fits'.format(run, _)
+  # if os.path.exists(os.environ['CSCRATCH'] + '/desi/bluebump/redwood/redrock/redrock-64-{}.h5'.format(_)):
+  ofile = os.environ['CSCRATCH'] + '/desi/bluebump/{}/redrock/redrock-64-{}.h5'.format(run, _)
+  zbest = os.environ['CSCRATCH'] + '/desi/bluebump/{}/redrock/zbest-64-{}.fits'.format(run, _)
   
-    if os.path.exists(ofile):
+  if os.path.exists(ofile):
       print('{} exists.'.format(ofile))
 
-    else:
+  else:
       ##  rrdesi_mpi
       cmd   = 'rrdesi ' + x + ' -o ' + ofile + ' -z ' + zbest
 

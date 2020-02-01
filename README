@@ -1,1 +1,5 @@
 export DESIMODEL=/global/homes/m/mjwilson/desi/bluebump/
+
+NOTE:
+Dynamic exposures were not used for dipthru run, so large differences are seen with
+e.g. master run. 
