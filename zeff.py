@@ -28,20 +28,26 @@ for line, color, label in zip([1665.85, 2326.0, 2799.117, 3346.79, 3626., 3889.0
   
   print('{:.3f}  {:.3f}  {:.3f}'.format(line, lo, hi))
 
+
+#  tiles   = ['10786', '8570', '8581', '8532', '8594', '8579', '8569', '8566', '8580']
+tiles      = np.loadtxt('/global/homes/m/mjwilson/desi/bluebump/redwood_exposure_nums.txt', dtype=str)
+
 #                                                                                                                                                                                                                               
-for i, tile in enumerate(['10786', '8570', '8581', '8532', '8594', '8579', '8569', '8566', '8580']): 
-#for i, tile in enumerate(['8589', '8561', '8570', '8579', '8535', '8549', '8550']):
+for i, tile in enumerate(tiles): 
   redwood  = root + '/spectro/redux/redwood/spectra-64/{}/{}/zbest-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
 
   master   = os.environ['CSCRATCH'] + '/desi/bluebump/redwood/redrock/zbest-64-{}.fits'.format(tile)
-  degrade  = os.environ['CSCRATCH'] + '/desi/bluebump/degraded/redrock/zbest-64-{}.fits'.format(tile) 
-  # dipthru  = os.environ['CSCRATCH'] + '/desi/bluebump/thrudip/redrock/zbest-64-{}.fits'.format(tile)
 
+  # S/N degraded according to throughput via IVAR. 
+  degrade  = os.environ['CSCRATCH'] + '/desi/bluebump/degraded/redrock/zbest-64-{}.fits'.format(tile) 
+
+  # Run in which actual throughput is degraded for quickspectra;  NOTE:  had no dynamic exposure times. 
+  # dipthru  = os.environ['CSCRATCH'] + '/desi/bluebump/thrudip/redrock/zbest-64-{}.fits'.format(tile)
+  
   ttargets = root + '/targets/{}/{}/truth-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
   
   result   = {} 
 
-  # dipthru
   for x, label in zip([redwood, master, degrade], ['Redwood', 'Master', 'Degraded', 'Dip']):
     result[label] = {}
 
@@ -67,7 +73,8 @@ for i, tile in enumerate(['10786', '8570', '8581', '8532', '8594', '8579', '8569
     zerr          = zbest.data['ZERR'][isin]
     zwarn         = zbest.data['ZWARN'][isin]
     ztids         = ztids[isin]
-    
+
+    # Match TIDS in spec. tile with target ids in truth table.
     index         = np.argsort(tids)
     sorted_tids   = tids[index]
     sorted_index  = np.searchsorted(sorted_tids, ztids)
@@ -76,8 +83,9 @@ for i, tile in enumerate(['10786', '8570', '8581', '8532', '8594', '8579', '8569
     mask          = tids[yindex] != ztids
 
     trusort       = np.ma.array(yindex, mask=mask)
-    truzs         = tzs[trusort]
-    
+    _             = tids[trusort]
+    truzs         =  tzs[trusort]
+
     significance  = np.abs(tzs[trusort] - zz) / zerr
     significance  = np.log10(significance)
 
@@ -92,17 +100,19 @@ for i, tile in enumerate(['10786', '8570', '8581', '8532', '8594', '8579', '8569
 
     print('\n\nHealpixel:  {}'.format(tile))                                                                                                                                                                                                                                                                   
     print('Number of targets: {}'.format(len(result[label]['ztids'])))
-    print('Number of warnings for {}: {}'.format(label, np.count_nonzero(zwarn)))                                                                                                                                                                                                                         
-    print('Number of redshifts in err by 1 sigma: {}'.format(np.count_nonzero(significance > 1.0)))                                                                                                                                                                                                       
-    print('Number of redshifts in err by 2 sigma: {}'.format(np.count_nonzero(significance > 2.0)))                                                                                                                                                                                                       
-    print('Number of redshifts in err by 3 sigma: {}'.format(np.count_nonzero(significance > 3.0)))  
-  
-  problem         = np.abs(result['Degraded']['zz'] - result['Master']['zz']) / result['Master']['zerr']
-  problem         = problem > 1.0
+    print('Number of warnings for {}: {}'.format(label, np.count_nonzero(zwarn)))
+    print('Number of redshifts in err by 1 sigma: {}'.format(np.count_nonzero(significance > 1.0)))
+    print('Number of redshifts in err by 2 sigma: {}'.format(np.count_nonzero(significance > 2.0)))                                                                                                                                         print('Number of redshifts in err by 3 sigma: {}'.format(np.count_nonzero(significance > 3.0)))  
 
-  noproblem       = ~problem
+    print(ztids, _)
+    
+  #   
+  # problem       = np.abs(result['Degraded']['zz'] - result['Master']['zz']) / result['Master']['zerr']
+  # problem       = problem > 1.0
 
-  warning         = (result['Degraded']['zwarn'] > 0)
+  # noproblem     = ~problem
+
+  warning         = (result['Master']['zwarn'] > 0)
   
   pl.plot(tzs[result['Master']['trusort']][ warning], np.log10(np.abs(result['Degraded']['zz'] - result['Master']['zz']) / result['Master']['zerr'])[ warning], 'x', c='r', markersize=3)
   pl.plot(tzs[result['Master']['trusort']][~warning], np.log10(np.abs(result['Degraded']['zz'] - result['Master']['zz']) / result['Master']['zerr'])[~warning], 'x', c='k', markersize=3)
