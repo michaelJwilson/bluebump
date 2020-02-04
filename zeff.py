@@ -1,25 +1,39 @@
 import os
 import numpy             as np
 import pylab             as pl
+import pandas            as pd
 
 import astropy.io.fits   as fits
 import matplotlib.style  as style
 import matplotlib.pyplot as plt
 
+from  astropy.table import  Table
+
 
 plt.figure(figsize=(15, 5))
+
+def significance(truzs, zz, zerr):
+  significance = np.abs(truzs - zz) / zerr
+  significance = np.log10(significance)
+
+  return  significance
+
 
 root    = '/global/projecta/projectdirs/desi/datachallenge/redwood/'
 truth   = root + '/targets/truth.fits'
 
-dat     = fits.open(truth)[1]
+truth   = Table.read(truth, format='fits')
+truth   = truth.to_pandas() 
 
-tids    = dat.data['TARGETID'] 
-tzs     = dat.data['TRUEZ']
+tids    = truth['TARGETID'] 
+tzs     = truth['TRUEZ']
+
+print(len(truth))
+print(truth)
 
 print('\n')
 
-for line, color, label in zip([1665.85, 2326.0, 2799.117, 3346.79, 3626., 3889.0, 4072.3, 4364.436], ['g', 'lime', 'chocolate', 'gold', 'c', 'r', 'm', 'k'], [r'OIII', 'CII', 'MgII', 'Ne V', 'OII', 'HeI', 'SII', 'OIII']):
+for line, color, label in zip([1908.7, 2799.117, 3727., 3889.0, 4072.3, 4364.436], ['g', 'chocolate', 'c', 'r', 'm', 'k'], [r'CIII', 'MgII', 'OII', 'HeI', 'SII', 'OIII']):
   lo            = 4300. / line - 1.0
   hi            = 4500. / line - 1.0
   
@@ -48,7 +62,9 @@ for i, tile in enumerate(tiles):
   
   result   = {} 
 
-  for x, label in zip([redwood, master, degrade], ['Redwood', 'Master', 'Degraded', 'Dip']):
+  # 'Dip'
+  for x, label in zip([redwood, master, degrade], ['Redwood', 'Master', 'Degraded']):
+    # Load a spectroscopic tile.
     result[label] = {}
 
     zbest         = fits.open(x)[1]
@@ -74,7 +90,7 @@ for i, tile in enumerate(tiles):
     zwarn         = zbest.data['ZWARN'][isin]
     ztids         = ztids[isin]
 
-    # Match TIDS in spec. tile with target ids in truth table.
+    # Match TIDS in spec. tile with target ids in truth table with a sorted search.
     index         = np.argsort(tids)
     sorted_tids   = tids[index]
     sorted_index  = np.searchsorted(sorted_tids, ztids)
@@ -83,56 +99,63 @@ for i, tile in enumerate(tiles):
     mask          = tids[yindex] != ztids
 
     trusort       = np.ma.array(yindex, mask=mask)
-    _             = tids[trusort]
-    truzs         =  tzs[trusort]
 
-    significance  = np.abs(tzs[trusort] - zz) / zerr
-    significance  = np.log10(significance)
+    _             = tids[trusort][~trusort.mask]
+    truzs         =  tzs[trusort][~trusort.mask]
 
+    # Objects that weren't in the truth tables.  standards?
+    zzmask        = np.isin(ztids, _)
+
+    # Check that TID matches between truth table and spec. tile was successful.
+    assert  np.all(ztids[zzmask] == _)
+
+    # Save to a dict.
     result[label]['zbest']   = zbest
     result[label]['ztids']   = ztids
     result[label]['zz']      = zz
     result[label]['zerr']    = zerr
     result[label]['zwarn']   = zwarn
+    result[label]['zzmask']  = zzmask
     result[label]['trusort'] = trusort
     result[label]['truzs']   = truzs
-    result[label]['signif']  = significance
+    result[label]['signif']  = significance(truzs, zz[zzmask], zerr[zzmask])
 
-    print('\n\nHealpixel:  {}'.format(tile))                                                                                                                                                                                                                                                                   
+    print('\n\nHealpixel:  {}'.format(tile))
     print('Number of targets: {}'.format(len(result[label]['ztids'])))
     print('Number of warnings for {}: {}'.format(label, np.count_nonzero(zwarn)))
-    print('Number of redshifts in err by 1 sigma: {}'.format(np.count_nonzero(significance > 1.0)))
-    print('Number of redshifts in err by 2 sigma: {}'.format(np.count_nonzero(significance > 2.0)))                                                                                                                                         print('Number of redshifts in err by 3 sigma: {}'.format(np.count_nonzero(significance > 3.0)))  
+    print('Number of redshifts in err by 1 sigma: {}'.format(np.count_nonzero(result[label]['signif'] > 1.0)))
+    print('Number of redshifts in err by 2 sigma: {}'.format(np.count_nonzero(result[label]['signif'] > 2.0)))
+    print('Number of redshifts in err by 3 sigma: {}'.format(np.count_nonzero(result[label]['signif'] > 3.0)))
 
-    print(ztids, _)
-    
-  #   
-  # problem       = np.abs(result['Degraded']['zz'] - result['Master']['zz']) / result['Master']['zerr']
-  # problem       = problem > 1.0
+  # Check that no funny sorting happened between the Master and Degraded runs. 
+  assert  np.all(result['Degraded']['ztids'] == result['Master']['ztids'])
 
-  # noproblem     = ~problem
+  #
+  zzmask  =  result['Master']['zzmask']
+  warning = (result['Master']['zwarn'][zzmask] > 0)
 
-  warning         = (result['Master']['zwarn'] > 0)
+  pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
+  pl.axhline(y=1.0, xmin=0, xmax=1, c='k')
   
-  pl.plot(tzs[result['Master']['trusort']][ warning], np.log10(np.abs(result['Degraded']['zz'] - result['Master']['zz']) / result['Master']['zerr'])[ warning], 'x', c='r', markersize=3)
-  pl.plot(tzs[result['Master']['trusort']][~warning], np.log10(np.abs(result['Degraded']['zz'] - result['Master']['zz']) / result['Master']['zerr'])[~warning], 'x', c='k', markersize=3)
-  
+  pl.plot(truzs[warning],  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][warning], ' x', c='r', markersize=3) 
+  pl.plot(truzs[~warning], significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning], 'x', c='k', markersize=3)
+
   '''
-  problem         = np.abs(result['Dip']['zz'] - result['Master']['zz'][result['Dip']['matched']]) / result['Master']['zerr'][result['Dip']['matched']]
-  problem         = problem > 1.0
-
-  noproblem       = ~problem
-
-  warning         = result['Dip']['zwarn'] == 0
+  sig          =  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning] 
+  band         =  sig > 0
   
-  pl.plot(tzs[result['Master']['trusort']][result['Dip']['matched']][ warning], np.log10(np.abs(result['Dip']['zz'] - result['Master']['zz'][result['Dip']['matched']]) / result['Master']['zerr'][result['Dip']['matched']])[ warning], 'x', c='k', markersize=3)
-  pl.plot(tzs[result['Master']['trusort']][result['Dip']['matched']][~warning], np.log10(np.abs(result['Dip']['zz'] - result['Master']['zz'][result['Dip']['matched']]) / result['Master']['zerr'][result['Dip']['matched']])[~warning], 'x', c='r', markersize=3)   
+  isin         =  np.isin(truth['TARGETID'], result['Master']['tids'][zzmask])
+
+  print(np.count_nonzero(isin))
+  print(truth[isin])
   '''
   
-pl.xlim(-0.02, 1.8)
+pl.xlim(-0.02, 1.7)
 pl.ylim(-2.00, 5.0)
+
 pl.xlabel(r'$z_{\rm{True}}$')
 pl.ylabel(r"$\log_{10}(|z' - z| \ / \ z_{\rm{err}})$")
+
 pl.legend(loc=1, frameon=True)
 
 ax = pl.gca()
