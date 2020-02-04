@@ -28,6 +28,17 @@ truth   = Table.read(truth, format='fits')
 tids    = truth['TARGETID'] # .to_numpy()
 tzs     = truth['TRUEZ']    # .to_numpy()
 
+del truth['MOCKID']
+del truth['SEED']
+del truth['TEFF']
+del truth['LOGG']
+del truth['FEH']
+
+# Nanomaggies to mags.
+for x in ['FLUX_G', 'FLUX_R', 'FLUX_Z', 'FLUX_W1', 'FLUX_W2']:
+  ff       = truth[x]  
+  truth[x] = 22.5 - 2.5 * np.log10(ff)
+  
 print(len(truth))
 print(truth)
 
@@ -46,6 +57,8 @@ for line, color, label in zip([1908.7, 2799.117, 3727., 3889.0, 4072.3, 4364.436
 #  tiles   = ['10786', '8570', '8581', '8532', '8594', '8579', '8569', '8566', '8580']
 tiles      = np.loadtxt('/global/homes/m/mjwilson/desi/bluebump/redwood_exposure_nums.txt', dtype=str)
 
+labels     = ['BAD Z', 'LRG', 'ELG', 'QSO'] 
+
 #                                                                                                                                                                                                                               
 for i, tile in enumerate(tiles): 
   redwood  = root + '/spectro/redux/redwood/spectra-64/{}/{}/zbest-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
@@ -61,7 +74,7 @@ for i, tile in enumerate(tiles):
   ttargets = root + '/targets/{}/{}/truth-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
   
   result   = {} 
-
+  
   # 'Dip'
   for x, label in zip([redwood, master, degrade], ['Redwood', 'Master', 'Degraded']):
     # Load a spectroscopic tile.
@@ -138,11 +151,6 @@ for i, tile in enumerate(tiles):
   band         =  sig > 0.0
 
   mids         =  result['Master']['ztids'][zzmask][~warning]
-  
-  pl.plot(truzs[warning],  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][warning], ' x', c='r', markersize=3) 
-  pl.plot(truzs[~warning], significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning], 'x', c='k', markersize=3)
-
-  pl.plot(truzs[~warning][band], significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning][band], 'x', c='b', markersize=3)
 
   #  
   isin         =  np.isin(truth['TARGETID'], mids)
@@ -154,10 +162,27 @@ for i, tile in enumerate(tiles):
 
   _['SIG']     =  sig[inds]
 
+  select       = (_['SIG'] > 0.0)
+
   print()
-  print(_[_['SIG'] > 0.0])
+  print(_[select])
   
-  # break
+  try:
+     pl.plot(truzs[warning],  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][warning], ' x', c='r', markersize=3, label='BAD Z')
+     pl.plot(truzs[~warning], significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning], 'x', c='k', markersize=3)
+
+     is_elg     = [x.strip() == 'ELG' for x in _['TEMPLATETYPE']]
+     is_lrg     = [x.strip() == 'LRG' for x in _['TEMPLATETYPE']]
+     is_qso     = [x.strip() == 'QSO' for x in _['TEMPLATETYPE']]
+     
+     pl.plot(_['TRUEZ'][select & np.array(is_lrg)], _['SIG'][select & np.array(is_lrg)], 'x', c='g',    markersize=3, label='LRG')
+     pl.plot(_['TRUEZ'][select & np.array(is_elg)], _['SIG'][select & np.array(is_elg)], 'x', c='b',    markersize=3, label='ELG')
+     pl.plot(_['TRUEZ'][select & np.array(is_qso)], _['SIG'][select & np.array(is_qso)], 'x', c='gold', markersize=3, label='QSO')
+
+     labels     = [''] * 4
+    
+  except:
+    continue
 
 #
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
@@ -169,7 +194,7 @@ pl.ylim(-2.00, 5.0)
 pl.xlabel(r'$z_{\rm{True}}$')
 pl.ylabel(r"$\log_{10}(|z' - z| \ / \ z_{\rm{err}})$")
 
-# pl.legend(loc=1, frameon=True)
+pl.legend(loc=1, frameon=True)
 
 ax = pl.gca()
 
