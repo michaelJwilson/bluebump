@@ -44,7 +44,7 @@ print(truth)
 
 print('\n')
 
-for line, color, label in zip([1908.7, 2799.117, 3727., 3889.0, 4072.3, 4364.436], ['g', 'chocolate', 'c', 'r', 'm', 'k'], [r'CIII', 'MgII', 'OII', 'HeI', 'SII', 'OIII']):
+for line, color, label in zip([1549.5, 1908.7, 2799.117, 3727., 3889.0, 4072.3, 4364.436], ['k', 'g', 'chocolate', 'c', 'r', 'm'], ['CIV', 'CIII', 'MgII', 'OII', 'HeI', 'SII', 'OIII']):
   lo            = 4300. / line - 1.0
   hi            = 4500. / line - 1.0
   
@@ -166,29 +166,31 @@ for i, tile in enumerate(tiles):
 
   print()
   print(_[select])
-  
-  try:
-     pl.plot(truzs[warning],  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][warning], ' x', c='r', markersize=3, label='BAD Z')
-     pl.plot(truzs[~warning], significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning], 'x', c='k', markersize=3)
 
-     is_elg     = [x.strip() == 'ELG' for x in _['TEMPLATETYPE']]
-     is_lrg     = [x.strip() == 'LRG' for x in _['TEMPLATETYPE']]
-     is_qso     = [x.strip() == 'QSO' for x in _['TEMPLATETYPE']]
+  is_elg       = [x.strip() == 'ELG' for x in _['TEMPLATETYPE']]
+  is_lrg       = [x.strip() == 'LRG' for x in _['TEMPLATETYPE']]
+  is_qso       = [x.strip() == 'QSO' for x in _['TEMPLATETYPE']]
+
+  try:
+     pl.plot(truzs[warning],  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][warning], ' x', c='r', markersize=3, label=labels[0])
+     pl.plot(truzs[~warning], significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning], 'x', c='k', markersize=3)
      
-     pl.plot(_['TRUEZ'][select & np.array(is_lrg)], _['SIG'][select & np.array(is_lrg)], 'x', c='g',    markersize=3, label='LRG')
-     pl.plot(_['TRUEZ'][select & np.array(is_elg)], _['SIG'][select & np.array(is_elg)], 'x', c='b',    markersize=3, label='ELG')
-     pl.plot(_['TRUEZ'][select & np.array(is_qso)], _['SIG'][select & np.array(is_qso)], 'x', c='gold', markersize=3, label='QSO')
+     pl.plot(_['TRUEZ'][select & np.array(is_lrg)], _['SIG'][select & np.array(is_lrg)], 'x', c='g',    markersize=3, label=labels[1])
+     pl.plot(_['TRUEZ'][select & np.array(is_elg)], _['SIG'][select & np.array(is_elg)], 'x', c='b',    markersize=3, label=labels[2])
+     pl.plot(_['TRUEZ'][select & np.array(is_qso)], _['SIG'][select & np.array(is_qso)], 'x', c='gold', markersize=3, label=labels[3])
 
      labels     = [''] * 4
     
   except:
     continue
 
+  # break
+  
 #
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
 pl.axhline(y=1.0, xmin=0, xmax=1, c='k')
   
-pl.xlim(-0.02, 1.7)
+pl.xlim(-0.02, 2.1)
 pl.ylim(-2.00, 5.0)
 
 pl.xlabel(r'$z_{\rm{True}}$')
