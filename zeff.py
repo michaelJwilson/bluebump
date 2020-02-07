@@ -1,4 +1,5 @@
 import os
+import pickle
 import numpy             as np
 import pylab             as pl
 import pandas            as pd
@@ -7,7 +8,7 @@ import astropy.io.fits   as fits
 import matplotlib.style  as style
 import matplotlib.pyplot as plt
 
-from  astropy.table import  Table
+from   astropy.table     import Table
 
 
 plt.figure(figsize=(15, 5))
@@ -54,23 +55,26 @@ for line, color, label in zip([1549.5, 1908.7, 2799.117, 3727., 3889.0, 4072.3, 
   print('{:.3f}  {:.3f}  {:.3f}'.format(line, lo, hi))
 
 
-#  tiles   = ['10786', '8570', '8581', '8532', '8594', '8579', '8569', '8566', '8580']
-tiles      = np.loadtxt('/global/homes/m/mjwilson/desi/bluebump/redwood_exposure_nums.txt', dtype=str)
 
+tiles      = np.loadtxt('/global/homes/m/mjwilson/desi/bluebump/redwood_exposure_nums.txt', dtype=str)
 labels     = ['BAD Z', 'LRG', 'ELG', 'QSO'] 
 
-#                                                                                                                                                                                                                               
+results    = []
+
 for i, tile in enumerate(tiles): 
+  # Original redwood run files.
   redwood  = root + '/spectro/redux/redwood/spectra-64/{}/{}/zbest-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
 
+  # Rerun of redwood spectra with redrock master: 02/07/20.
   master   = os.environ['CSCRATCH'] + '/desi/bluebump/redwood/redrock/zbest-64-{}.fits'.format(tile)
 
-  # S/N degraded according to throughput via IVAR. 
+  # S/N degraded according to throughput via IVAR; redrock master.  
   degrade  = os.environ['CSCRATCH'] + '/desi/bluebump/degraded/redrock/zbest-64-{}.fits'.format(tile) 
 
-  # Run in which actual throughput is degraded for quickspectra;  NOTE:  had no dynamic exposure times. 
-  # dipthru  = os.environ['CSCRATCH'] + '/desi/bluebump/thrudip/redrock/zbest-64-{}.fits'.format(tile)
-  
+  # Run in which actual throughput is degraded for quickspectra;  NOTE:  had no dynamic exposure times so not directly comparable to redwood. 
+  # dipthru = os.environ['CSCRATCH'] + '/desi/bluebump/thrudip/redrock/zbest-64-{}.fits'.format(tile)
+
+  # Corresponding Truth file.
   ttargets = root + '/targets/{}/{}/truth-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
   
   result   = {} 
@@ -101,6 +105,8 @@ for i, tile in enumerate(tiles):
     zz            = zbest.data['Z'][isin]
     zerr          = zbest.data['ZERR'][isin]
     zwarn         = zbest.data['ZWARN'][isin]
+
+    # TARGETIDS is the spec. tile.
     ztids         = ztids[isin]
 
     # Match TIDS in spec. tile with target ids in truth table with a sorted search.
@@ -113,10 +119,13 @@ for i, tile in enumerate(tiles):
 
     trusort       = np.ma.array(yindex, mask=mask)
 
+    # Spec. - matched TARGETIDs in truth. 
     _             = tids[trusort][~trusort.mask]
+
+    # Corresponding redshifts.
     truzs         =  tzs[trusort][~trusort.mask]
 
-    # Objects that weren't in the truth tables.  standards?
+    # Objects that weren't in the truth tables.  Standards?
     zzmask        = np.isin(ztids, _)
 
     # Check that TID matches between truth table and spec. tile was successful.
@@ -182,10 +191,10 @@ for i, tile in enumerate(tiles):
      labels     = [''] * 4
     
   except:
-    continue
+    continue  
 
-  # break
-  
+  results.append(result)
+
 #
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
 pl.axhline(y=1.0, xmin=0, xmax=1, c='k')
