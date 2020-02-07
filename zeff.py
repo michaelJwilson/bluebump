@@ -34,6 +34,9 @@ del truth['SEED']
 del truth['TEFF']
 del truth['LOGG']
 del truth['FEH']
+del truth['CONTAM_TARGET']
+del truth['TEMPLATEID']
+del truth['VDISP']
 
 # Nanomaggies to mags.
 for x in ['FLUX_G', 'FLUX_R', 'FLUX_Z', 'FLUX_W1', 'FLUX_W2']:
@@ -133,16 +136,20 @@ for i, tile in enumerate(tiles):
 
     # Save to a dict.
     result[label]['zbest']   = zbest
-    result[label]['ztids']   = ztids
-    result[label]['zz']      = zz
-    result[label]['zerr']    = zerr
-    result[label]['zwarn']   = zwarn
+    result[label]['ztids']   = ztids[zzmask]
+    result[label]['zz']      = zz[zzmask]
+    result[label]['zerr']    = zerr[zzmask]
+    result[label]['zwarn']   = zwarn[zzmask] > 0
     result[label]['zzmask']  = zzmask
-    result[label]['trusort'] = trusort
+    result[label]['tids']    = _
     result[label]['truzs']   = truzs
     result[label]['signif']  = significance(truzs, zz[zzmask], zerr[zzmask])
 
+    result[label]['nmatch']  = len(ztids)
+
+    ##
     print('\n\nHealpixel:  {}'.format(tile))
+
     print('Number of targets: {}'.format(len(result[label]['ztids'])))
     print('Number of warnings for {}: {}'.format(label, np.count_nonzero(zwarn)))
     print('Number of redshifts in err by 1 sigma: {}'.format(np.count_nonzero(result[label]['signif'] > 1.0)))
@@ -151,51 +158,61 @@ for i, tile in enumerate(tiles):
     
   # Check that no funny sorting happened between the Master and Degraded runs. 
   assert  np.all(result['Degraded']['ztids'] == result['Master']['ztids'])
-
-  #
-  zzmask       =  result['Master']['zzmask']
-  warning      = (result['Master']['zwarn'][zzmask] > 0)
-
-  sig          =  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning]
+  
+  # Calculate the significance of the redshift shift between Degraded and Master. 
+  sig          =  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])
   band         =  sig > 0.0
 
-  mids         =  result['Master']['ztids'][zzmask][~warning]
-
   #  
-  isin         =  np.isin(truth['TARGETID'], mids)
+  isin         =  np.isin(truth['TARGETID'], result['Master']['ztids'])
+
+  # Construct the truth table for the targets matched to this spec. tile. 
   _            =  Table(truth[isin], copy=True)
-
   _.sort('TARGETID')
+  
+  inds         =  np.argsort(result['Master']['ztids'])
 
-  inds         =  np.argsort(mids)
-
+  # Update the truth table with the significance of the redshift shift. 
   _['SIG']     =  sig[inds]
 
-  select       = (_['SIG'] > 0.0)
-
+  # Updates of Master and Degraded results.
+  _['MASTERZ']     =  result['Master']['zz'][inds]
+  _['DEGRDEZ']     =  result['Degraded']['zz'][inds]
+  _['MASTERZWARN'] =  result['Master']['zwarn'][inds]
+  
+  # Those for which the shift was significant. 
+  _['INSAMPLE']    = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
+  
   print()
-  print(_[select])
+  print(_)
 
   is_elg       = [x.strip() == 'ELG' for x in _['TEMPLATETYPE']]
   is_lrg       = [x.strip() == 'LRG' for x in _['TEMPLATETYPE']]
   is_qso       = [x.strip() == 'QSO' for x in _['TEMPLATETYPE']]
 
   try:
-     pl.plot(truzs[warning],  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][warning], ' x', c='r', markersize=3, label=labels[0])
-     pl.plot(truzs[~warning], significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])[zzmask][~warning], 'x', c='k', markersize=3)
-     
-     pl.plot(_['TRUEZ'][select & np.array(is_lrg)], _['SIG'][select & np.array(is_lrg)], 'x', c='g',    markersize=3, label=labels[1])
-     pl.plot(_['TRUEZ'][select & np.array(is_elg)], _['SIG'][select & np.array(is_elg)], 'x', c='b',    markersize=3, label=labels[2])
-     pl.plot(_['TRUEZ'][select & np.array(is_qso)], _['SIG'][select & np.array(is_qso)], 'x', c='gold', markersize=3, label=labels[3])
+     pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _['SIG'][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label=labels[0])
+     pl.plot(_['TRUEZ'][_['MASTERZWARN'] == 0], _['SIG'][_['MASTERZWARN'] == 0], marker='x', c='x', markersize=3, label=labels[0])
+
+     for _, color, label in zip(['ELG', 'LRG', 'QSO'], ['g', 'b', 'gold'], labels[1:]):
+       is_type = [x.strip() == _ for x in _['TEMPLATETYPE']]
+       no_warn = _['MASTERZWARN'] == 0
+       signif  = _['SIG'] > 0.0
+
+       toplot  = is_type & no_warn & signif
+       
+       # pl.plot(_['TRUEZ'][toplot], _['SIG'][toplot], marker='x', c=color, markersize=3, label=label)
 
      labels     = [''] * 4
-    
+
   except:
     continue  
 
   results.append(result)
 
-#
+  break
+  
+##
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
 pl.axhline(y=1.0, xmin=0, xmax=1, c='k')
   
