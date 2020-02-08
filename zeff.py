@@ -43,8 +43,8 @@ for x in ['FLUX_G', 'FLUX_R', 'FLUX_Z', 'FLUX_W1', 'FLUX_W2']:
   ff       = truth[x]  
   truth[x] = 22.5 - 2.5 * np.log10(ff)
   
-print(len(truth))
-print(truth)
+# print(len(truth))
+# print(truth)
 
 print('\n')
 
@@ -182,36 +182,90 @@ for i, tile in enumerate(tiles):
   
   # Those for which the shift was significant. 
   _['INSAMPLE']    = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
+
+  # Remove white space.
+  _['TEMPLATETYPE'] = [x.strip() for x in _['TEMPLATETYPE']]
   
   print()
+  print('Solved for: {}'.format(i))
   print(_)
 
-  is_elg       = [x.strip() == 'ELG' for x in _['TEMPLATETYPE']]
-  is_lrg       = [x.strip() == 'LRG' for x in _['TEMPLATETYPE']]
-  is_qso       = [x.strip() == 'QSO' for x in _['TEMPLATETYPE']]
+  is_elg       = [x == 'ELG' for x in _['TEMPLATETYPE']]
+  is_lrg       = [x == 'LRG' for x in _['TEMPLATETYPE']]
+  is_qso       = [x == 'QSO' for x in _['TEMPLATETYPE']]
 
-  try:
-     pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _['SIG'][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label=labels[0])
-     pl.plot(_['TRUEZ'][_['MASTERZWARN'] == 0], _['SIG'][_['MASTERZWARN'] == 0], marker='x', c='x', markersize=3, label=labels[0])
+  if i == 0:  
+    pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _['SIG'][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label=labels[0], lw=0)
 
-     for _, color, label in zip(['ELG', 'LRG', 'QSO'], ['g', 'b', 'gold'], labels[1:]):
-       is_type = [x.strip() == _ for x in _['TEMPLATETYPE']]
-       no_warn = _['MASTERZWARN'] == 0
-       signif  = _['SIG'] > 0.0
+  else:
+    pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _['SIG'][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label='', lw=0)
 
-       toplot  = is_type & no_warn & signif
-       
-       # pl.plot(_['TRUEZ'][toplot], _['SIG'][toplot], marker='x', c=color, markersize=3, label=label)
+  #
+  pl.plot(_['TRUEZ'][_['MASTERZWARN'] == 0], _['SIG'][_['MASTERZWARN'] == 0], marker='x', c='k', markersize=3, label='', lw=0)
 
-     labels     = [''] * 4
+  for color, label in zip(['g', 'b', 'gold'], ['LRG', 'ELG', 'QSO']):
+    is_type =  [x == label for x in _['TEMPLATETYPE']]
+    no_warn = _['MASTERZWARN'] == 0
+    signif  = _['SIG'] > 0.0
+    
+    toplot  =  is_type & no_warn & signif
 
-  except:
-    continue  
+    if i > 0:
+      label = ''
+      
+    pl.plot(_['TRUEZ'][toplot], _['SIG'][toplot], marker='x', c=color, markersize=3, label=label, lw=0)
 
-  results.append(result)
+  results.append(_)
 
-  break
+  # if i > 2:
+  #   break
+
+##  Sample stats.
+ngal      = 0
+
+nbgs      = 0
+nlrg      = 0
+nelg      = 0
+nqso      = 0
+nstar     = 0
+
+dnbgs     = 0
+dnlrg     = 0
+dnelg     = 0
+dnqso     = 0
+dnstar    = 0
+
+for i, _ in enumerate(results):
+  # print('\n\nSolved for {}.'.format(i))
+  ngal   += np.count_nonzero(_['INSAMPLE'].astype(np.int))
+
+  nbgs   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')).astype(np.int))
+  nlrg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')).astype(np.int))
+  nelg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')).astype(np.int))
+  nqso   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')).astype(np.int))
+  nstar  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR')).astype(np.int))
+
+  dnbgs  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')  & (_['SIG'] > 0.0)).astype(np.int))
+  dnlrg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')  & (_['SIG'] > 0.0)).astype(np.int))
+  dnelg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')  & (_['SIG'] > 0.0)).astype(np.int))
+  dnqso  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')  & (_['SIG'] > 0.0)).astype(np.int))
+  dnstar += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR') & (_['SIG'] > 0.0)).astype(np.int))
   
+print('\n\nSummary stats:')
+print('# galaxies in z <= 2.1 sample: {}'.format(ngal))
+print()
+print('# BGSs  in sample: {}'.format(nbgs))
+print('# LRGs  in sample: {}'.format(nlrg))
+print('# ELGs  in sample: {}'.format(nelg))
+print('# QSOs  in sample: {}'.format(nqso))
+print('# STARs in sample: {}'.format(nstar))
+print()
+print('# BGSs  in sample with redshift bias: {}'.format(dnbgs))
+print('# LRGs  in sample with redshift bias: {}'.format(dnlrg))      
+print('# ELGs  in sample with redshift bias: {}'.format(dnelg))
+print('# QSOs  in sample with redshift bias: {}'.format(dnqso))
+print('# STARs in sample with redshift bias: {}'.format(dnstar))
+
 ##
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
 pl.axhline(y=1.0, xmin=0, xmax=1, c='k')
