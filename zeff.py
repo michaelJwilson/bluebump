@@ -181,11 +181,12 @@ for i, tile in enumerate(tiles):
   
   # Define the reference sample. 
   _['INSAMPLE']    = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
+  _['FAIL']        = _['INSAMPLE'] & (_['SIG'] > 0.0)
   
   print()
   print('Solved for: {}'.format(i))
   print(_)
-
+  
   is_elg       = [x == 'ELG' for x in _['TEMPLATETYPE']]
   is_lrg       = [x == 'LRG' for x in _['TEMPLATETYPE']]
   is_qso       = [x == 'QSO' for x in _['TEMPLATETYPE']]
@@ -202,7 +203,7 @@ for i, tile in enumerate(tiles):
   pl.plot(_['TRUEZ'][_['MASTERZWARN'] == 0], _['SIG'][_['MASTERZWARN'] == 0], marker='x', c='k', markersize=3, label='', lw=0)
 
   for color, label in zip(['g', 'b', 'gold'], ['LRG', 'ELG', 'QSO']):
-    # For each target class, color the targets of interest.
+    # For each target class, color the targets of interest (FAIL).
     is_type =  [x == label for x in _['TEMPLATETYPE']]
     no_warn = _['MASTERZWARN'] == 0
     signif  = _['SIG'] > 0.0
@@ -215,9 +216,6 @@ for i, tile in enumerate(tiles):
     pl.plot(_['TRUEZ'][toplot], _['SIG'][toplot], marker='x', c=color, markersize=3, label=label, lw=0)
 
   results.append(_)
-
-  # if i > 2:
-  #   break
 
 ##  Sample stats.
 ngal      = 0
@@ -246,15 +244,15 @@ for i, _ in enumerate(results):
   nqso   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')))
   nstar  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR')))
 
-  dnbgs  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')  & (_['SIG'] > 0.0)))
-  dnlrg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')  & (_['SIG'] > 0.0)))
-  dnelg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')  & (_['SIG'] > 0.0)))
-  dnqso  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')  & (_['SIG'] > 0.0)))
-  dnstar += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR') & (_['SIG'] > 0.0)))
+  dnbgs  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'BGS')))
+  dnlrg  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'LRG')))
+  dnelg  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'ELG')))
+  dnqso  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'QSO')))
+  dnstar += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'STAR')))
 
 ## 
 print('\n\nSummary stats:')
-print('# galaxies in z <= 2.1 sample: {}'.format(ngal))
+print('# galaxies in z <= 2.1 sample (no ZWARN): {}'.format(ngal))
 print()
 print('# BGSs  in sample: {}'.format(nbgs))
 print('# LRGs  in sample: {}'.format(nlrg))
@@ -267,6 +265,12 @@ print('# LRGs  in sample with redshift bias: {}'.format(dnlrg))
 print('# ELGs  in sample with redshift bias: {}'.format(dnelg))
 print('# QSOs  in sample with redshift bias: {}'.format(dnqso))
 print('# STARs in sample with redshift bias: {}'.format(dnstar))
+print()
+print('# BGSs  in sample with redshift bias %: {}'.format(100. * dnbgs  / nbgs))
+print('# LRGs  in sample with redshift bias %: {}'.format(100. * dnlrg  / nlrg))
+print('# ELGs  in sample with redshift bias %: {}'.format(100. * dnelg  / nelg))
+print('# QSOs  in sample with redshift bias %: {}'.format(100. * dnqso  / nqso))
+print('# STARs in sample with redshift bias %: {}'.format(100. * dnstar / nstar))
 
 ##
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
@@ -286,5 +290,8 @@ ax.grid(False)
 plt.tight_layout()
 
 pl.savefig('zeff.pdf')
+
+##
+pl.clf()
 
 print('\n\nDone.\n\n')
