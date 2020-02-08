@@ -23,20 +23,20 @@ def significance(truzs, zz, zerr):
 root    = '/global/projecta/projectdirs/desi/datachallenge/redwood/'
 truth   = root + '/targets/truth.fits'
 
+# Read the truth table.
 truth   = Table.read(truth, format='fits')
-# truth = truth.to_pandas() 
 
-tids    = truth['TARGETID'] # .to_numpy()
-tzs     = truth['TRUEZ']    # .to_numpy()
+tids    = truth['TARGETID']
+tzs     = truth['TRUEZ']
 
-del truth['MOCKID']
-del truth['SEED']
-del truth['TEFF']
-del truth['LOGG']
-del truth['FEH']
-del truth['CONTAM_TARGET']
-del truth['TEMPLATEID']
-del truth['VDISP']
+del  truth['MOCKID']
+del  truth['SEED']
+del  truth['TEFF']
+del  truth['LOGG']
+del  truth['FEH']
+del  truth['CONTAM_TARGET']
+del  truth['TEMPLATEID']
+del  truth['VDISP']
 
 # Nanomaggies to mags.
 for x in ['FLUX_G', 'FLUX_R', 'FLUX_Z', 'FLUX_W1', 'FLUX_W2']:
@@ -49,16 +49,16 @@ for x in ['FLUX_G', 'FLUX_R', 'FLUX_Z', 'FLUX_W1', 'FLUX_W2']:
 print('\n')
 
 for line, color, label in zip([1549.5, 1908.7, 2799.117, 3727., 3889.0, 4072.3, 4364.436], ['k', 'g', 'chocolate', 'c', 'r', 'm'], ['CIV', 'CIII', 'MgII', 'OII', 'HeI', 'SII', 'OIII']):
-  lo            = 4300. / line - 1.0
-  hi            = 4500. / line - 1.0
+  lo = 4300. / line - 1.0
+  hi = 4500. / line - 1.0
   
   pl.fill_between(np.arange(lo, hi, 0.01), -2., 5., color=color, alpha=0.2)  
+
   plt.text((hi + lo) / 2., 4.7, label, {'ha': 'center'})
   
   print('{:.3f}  {:.3f}  {:.3f}'.format(line, lo, hi))
 
-
-
+##
 tiles      = np.loadtxt('/global/homes/m/mjwilson/desi/bluebump/redwood_exposure_nums.txt', dtype=str)
 labels     = ['BAD Z', 'LRG', 'ELG', 'QSO'] 
 
@@ -82,17 +82,17 @@ for i, tile in enumerate(tiles):
   
   result   = {} 
   
-  # 'Dip'
-  for x, label in zip([redwood, master, degrade], ['Redwood', 'Master', 'Degraded']):
+  # 'Dip', 'Redwood'
+  for x, label in zip([master, degrade], ['Master', 'Degraded']):
     # Load a spectroscopic tile.
     result[label] = {}
 
     zbest         = fits.open(x)[1]
     ztids         = zbest.data['TARGETID']
-
-    isin          = np.ones_like(ztids).astype(bool)
     
     '''
+    isin          = np.ones_like(ztids).astype(bool)
+
     if x == dipthru:
       ztids       = fits.open(ttargets)[1].data['TARGETID'][:5000]
       
@@ -105,12 +105,12 @@ for i, tile in enumerate(tiles):
     '''
 
     #
-    zz            = zbest.data['Z'][isin]
-    zerr          = zbest.data['ZERR'][isin]
-    zwarn         = zbest.data['ZWARN'][isin]
-
+    zz            = zbest.data['Z']
+    zerr          = zbest.data['ZERR']
+    zwarn         = zbest.data['ZWARN']
+    
     # TARGETIDS is the spec. tile.
-    ztids         = ztids[isin]
+    ztids         = ztids
 
     # Match TIDS in spec. tile with target ids in truth table with a sorted search.
     index         = np.argsort(tids)
@@ -139,11 +139,11 @@ for i, tile in enumerate(tiles):
     result[label]['ztids']   = ztids[zzmask]
     result[label]['zz']      = zz[zzmask]
     result[label]['zerr']    = zerr[zzmask]
-    result[label]['zwarn']   = zwarn[zzmask] > 0
+    result[label]['zwarn']   = zwarn[zzmask] > 0  # Retain only if there was a warning.
     result[label]['zzmask']  = zzmask
     result[label]['tids']    = _
     result[label]['truzs']   = truzs
-    result[label]['signif']  = significance(truzs, zz[zzmask], zerr[zzmask])
+    result[label]['zbias']   = significance(truzs, zz[zzmask], zerr[zzmask])
 
     result[label]['nmatch']  = len(ztids)
 
@@ -152,39 +152,35 @@ for i, tile in enumerate(tiles):
 
     print('Number of targets: {}'.format(len(result[label]['ztids'])))
     print('Number of warnings for {}: {}'.format(label, np.count_nonzero(zwarn)))
-    print('Number of redshifts in err by 1 sigma: {}'.format(np.count_nonzero(result[label]['signif'] > 1.0)))
-    print('Number of redshifts in err by 2 sigma: {}'.format(np.count_nonzero(result[label]['signif'] > 2.0)))
-    print('Number of redshifts in err by 3 sigma: {}'.format(np.count_nonzero(result[label]['signif'] > 3.0)))
+
     
   # Check that no funny sorting happened between the Master and Degraded runs. 
   assert  np.all(result['Degraded']['ztids'] == result['Master']['ztids'])
-  
-  # Calculate the significance of the redshift shift between Degraded and Master. 
-  sig          =  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])
-  band         =  sig > 0.0
 
-  #  
-  isin         =  np.isin(truth['TARGETID'], result['Master']['ztids'])
+  #  Construct the truth table for the targets matched to this spec. tile.
+  isin             =  np.isin(truth['TARGETID'], result['Master']['ztids'])
 
-  # Construct the truth table for the targets matched to this spec. tile. 
-  _            =  Table(truth[isin], copy=True)
+  _                =  Table(truth[isin], copy=True)
   _.sort('TARGETID')
   
-  inds         =  np.argsort(result['Master']['ztids'])
+  inds             =  np.argsort(result['Master']['ztids'])
+
+  # Calculate the significance of the redshift shift between Degraded and Master.                                                                                                                                      
+  sig              =  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])
 
   # Update the truth table with the significance of the redshift shift. 
-  _['SIG']     =  sig[inds]
+  _['SIG']         =  sig[inds]
 
   # Updates of Master and Degraded results.
   _['MASTERZ']     =  result['Master']['zz'][inds]
   _['DEGRDEZ']     =  result['Degraded']['zz'][inds]
   _['MASTERZWARN'] =  result['Master']['zwarn'][inds]
-  
-  # Those for which the shift was significant. 
-  _['INSAMPLE']    = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
 
-  # Remove white space.
+  # Remove white space.                                                                                                                                                                                              
   _['TEMPLATETYPE'] = [x.strip() for x in _['TEMPLATETYPE']]
+  
+  # Define the reference sample. 
+  _['INSAMPLE']    = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
   
   print()
   print('Solved for: {}'.format(i))
@@ -194,16 +190,19 @@ for i, tile in enumerate(tiles):
   is_lrg       = [x == 'LRG' for x in _['TEMPLATETYPE']]
   is_qso       = [x == 'QSO' for x in _['TEMPLATETYPE']]
 
-  if i == 0:  
+  if i == 0:
+    # Targets for which redrock issued a warning.
     pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _['SIG'][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label=labels[0], lw=0)
 
   else:
+    # Drop the label after the first. 
     pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _['SIG'][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label='', lw=0)
 
-  #
+  # All other targets.
   pl.plot(_['TRUEZ'][_['MASTERZWARN'] == 0], _['SIG'][_['MASTERZWARN'] == 0], marker='x', c='k', markersize=3, label='', lw=0)
 
   for color, label in zip(['g', 'b', 'gold'], ['LRG', 'ELG', 'QSO']):
+    # For each target class, color the targets of interest.
     is_type =  [x == label for x in _['TEMPLATETYPE']]
     no_warn = _['MASTERZWARN'] == 0
     signif  = _['SIG'] > 0.0
@@ -223,12 +222,14 @@ for i, tile in enumerate(tiles):
 ##  Sample stats.
 ngal      = 0
 
+##  Counts of the simulated galaxies in each target class.   
 nbgs      = 0
 nlrg      = 0
 nelg      = 0
 nqso      = 0
 nstar     = 0
 
+##  Same, but for this with a sig. shift in their redshift due to the blue dip.  
 dnbgs     = 0
 dnlrg     = 0
 dnelg     = 0
@@ -237,20 +238,21 @@ dnstar    = 0
 
 for i, _ in enumerate(results):
   # print('\n\nSolved for {}.'.format(i))
-  ngal   += np.count_nonzero(_['INSAMPLE'].astype(np.int))
+  ngal   += np.count_nonzero(_['INSAMPLE'])
 
-  nbgs   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')).astype(np.int))
-  nlrg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')).astype(np.int))
-  nelg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')).astype(np.int))
-  nqso   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')).astype(np.int))
-  nstar  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR')).astype(np.int))
+  nbgs   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')))
+  nlrg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')))
+  nelg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')))
+  nqso   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')))
+  nstar  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR')))
 
-  dnbgs  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')  & (_['SIG'] > 0.0)).astype(np.int))
-  dnlrg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')  & (_['SIG'] > 0.0)).astype(np.int))
-  dnelg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')  & (_['SIG'] > 0.0)).astype(np.int))
-  dnqso  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')  & (_['SIG'] > 0.0)).astype(np.int))
-  dnstar += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR') & (_['SIG'] > 0.0)).astype(np.int))
-  
+  dnbgs  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')  & (_['SIG'] > 0.0)))
+  dnlrg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')  & (_['SIG'] > 0.0)))
+  dnelg  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')  & (_['SIG'] > 0.0)))
+  dnqso  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')  & (_['SIG'] > 0.0)))
+  dnstar += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR') & (_['SIG'] > 0.0)))
+
+## 
 print('\n\nSummary stats:')
 print('# galaxies in z <= 2.1 sample: {}'.format(ngal))
 print()
@@ -268,7 +270,6 @@ print('# STARs in sample with redshift bias: {}'.format(dnstar))
 
 ##
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
-pl.axhline(y=1.0, xmin=0, xmax=1, c='k')
   
 pl.xlim(-0.02, 2.1)
 pl.ylim(-2.00, 5.0)
