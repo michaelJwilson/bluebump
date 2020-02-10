@@ -1,3 +1,4 @@
+# Header for zbest file structure.
 XTENSION= 'BINTABLE'           / binary table extension                         
 BITPIX  =                    8 / array data type                                
 NAXIS   =                    2 / number of array dimensions                     

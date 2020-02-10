@@ -1,6 +1,7 @@
 import glob
 
 
+# Write exposure (healpixels) list.
 root = '/global/projecta/projectdirs/desi/datachallenge/redwood/spectro/redux/redwood/spectra-64/'
 
 dirs = glob.glob(root + '*')

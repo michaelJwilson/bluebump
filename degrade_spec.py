@@ -11,8 +11,8 @@ files = file.readlines()
 files = [x.replace('\n', '') for x in files]
 file.close()
 
-wave, _thru  = np.loadtxt('thru-dip.txt', unpack=True)
-thru         = interpolate.interp1d(wave, _thru, fill_value=1.0, bounds_error=False)
+wave, _thru = np.loadtxt('thru-dip.txt', unpack=True)
+thru        = interpolate.interp1d(wave, _thru, fill_value=1.0, bounds_error=False)
 
 for x in files:
   _    = x.split('/')[-1]

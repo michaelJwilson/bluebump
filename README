@@ -1,5 +1,44 @@
+40% dip of throughput at 4400A. 
+
+
 export DESIMODEL=/global/homes/m/mjwilson/desi/bluebump/
 
+
+--  Process  --
+
+
+source  env.sh
+
+
+gen_bthru.py:     Generate new b-camera throughput curves.
+
+New b-throughput: data/throughput/thru-b-dip.fits
+New config:       desi.yaml
+
+
+degrade_spec.py:  ivar -> thru * thru * ivar. i.e. replicate loss of signal/noise by
+                  amplifying noise.
+
+                  see plots/dip.pdf, plots/divar.pdf
+
+
+Redwood file structs:  __files__/*
+
+                       redwood_exposure_nums.txt
+		       redwood_spectra_files.txt
+		       redwood_truth_spectra_files.txt
+
+
+
+zeff.py:         Generate final report metrics and plots.
+
+                 see plots/zeff.pdf   
+
+
+--  Deprecated  --
+
+run_qspectra.py:  Run quickspectra with new b-throughput desi.yaml
+
 NOTE:
-Dynamic exposures were not used for dipthru run, so large differences are seen with
-e.g. master run. 
+Dynamic exposures were not used for this dipthru run, so large differences are seen with
+e.g. original redwood run.

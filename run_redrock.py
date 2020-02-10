@@ -2,9 +2,11 @@ import os
 import glob
 
 
-# S/N degraded. 
+# S/N degraded by f * f. 
 run   = 'degraded'
 files = glob.glob('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/*')
+
+# Remove redwood output dir. from production list.  
 files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/redrock')
 
 # Throughput with dip.
@@ -12,7 +14,7 @@ files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/redrock')
 # files = glob.glob('/global/cscratch1/sd/mjwilson/desi/bluebump/thrudip/*')
 # files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/thrudip/redrock')
 
-# Redwood rerun.
+# Redwood rerun with redrock master branch.
 # run   = 'redwood'
 # file  = open('redwood_spectra_files.txt', mode = 'r')
 # files = file.readlines()
@@ -20,13 +22,14 @@ files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/redrock')
 # file.close()
 
 for i, x in enumerate(files):
+  # -- Original redwood file structure --
   # _ = x.split('/')[-1]
   # x = x + '/spectra-64-{}.fits'.format(_)
 
   # Degraded or thrudip. 
   _   = x.split('/')[-1].split('-')[2].replace('.fits', '')
 
-  # Only reduce degraded spectra for which the unaltered exists.
+  # Only reduce degraded spectra for which the new master exists (i.e. no throughput change) for comparison.
   if os.path.exists(os.environ['CSCRATCH'] + '/desi/bluebump/redwood/redrock/redrock-64-{}.h5'.format(_)):
     ofile = os.environ['CSCRATCH'] + '/desi/bluebump/{}/redrock/redrock-64-{}.h5'.format(run, _)
     zbest = os.environ['CSCRATCH'] + '/desi/bluebump/{}/redrock/zbest-64-{}.fits'.format(run, _)
