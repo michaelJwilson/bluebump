@@ -39,6 +39,7 @@ zeff.py:         Generate final report metrics and plots.
 
 run_qspectra.py:  Run quickspectra with new b-throughput desi.yaml
 
+
 NOTE:
 Dynamic exposures were not used for this dipthru run, so large differences are seen with
 e.g. original redwood run.

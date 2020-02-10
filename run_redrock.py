@@ -22,7 +22,7 @@ files.remove('/global/cscratch1/sd/mjwilson/desi/bluebump/degraded/redrock')
 # file.close()
 
 for i, x in enumerate(files):
-  # -- Original redwood file structure --
+  # -- Master redrock run of original redwood files --
   # _ = x.split('/')[-1]
   # x = x + '/spectra-64-{}.fits'.format(_)
 

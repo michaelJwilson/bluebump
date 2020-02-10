@@ -29,6 +29,7 @@ truth   = Table.read(truth, format='fits')
 tids    = truth['TARGETID']
 tzs     = truth['TRUEZ']
 
+# Remove unwanted columns for e.g. easy viewing. 
 del  truth['MOCKID']
 del  truth['SEED']
 del  truth['TEFF']
@@ -43,11 +44,9 @@ for x in ['FLUX_G', 'FLUX_R', 'FLUX_Z', 'FLUX_W1', 'FLUX_W2']:
   ff       = truth[x]  
   truth[x] = 22.5 - 2.5 * np.log10(ff)
   
-# print(len(truth))
-# print(truth)
-
 print('\n')
 
+# Add background redshifts affected for each line in output pdf. 
 for line, color, label in zip([1549.5, 1908.7, 2799.117, 3727., 3889.0, 4072.3, 4364.436], ['k', 'g', 'chocolate', 'c', 'r', 'm'], ['CIV', 'CIII', 'MgII', 'OII', 'HeI', 'SII', 'OIII']):
   lo = 4300. / line - 1.0
   hi = 4500. / line - 1.0
@@ -59,14 +58,16 @@ for line, color, label in zip([1549.5, 1908.7, 2799.117, 3727., 3889.0, 4072.3, 
   print('{:.3f}  {:.3f}  {:.3f}'.format(line, lo, hi))
 
 ##
-tiles      = np.loadtxt('/global/homes/m/mjwilson/desi/bluebump/redwood_exposure_nums.txt', dtype=str)
+tiles      = np.loadtxt('/global/homes/m/mjwilson/desi/bluebump/__files__/redwood_exposure_nums.txt', dtype=str)
 labels     = ['BAD Z', 'LRG', 'ELG', 'QSO'] 
+
 
 results    = []
 
+# Loop over files. 
 for i, tile in enumerate(tiles): 
   # Original redwood run files.
-  redwood  = root + '/spectro/redux/redwood/spectra-64/{}/{}/zbest-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
+  # redwood  = root + '/spectro/redux/redwood/spectra-64/{}/{}/zbest-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
 
   # Rerun of redwood spectra with redrock master: 02/07/20.
   master   = os.environ['CSCRATCH'] + '/desi/bluebump/redwood/redrock/zbest-64-{}.fits'.format(tile)
@@ -78,9 +79,9 @@ for i, tile in enumerate(tiles):
   # dipthru = os.environ['CSCRATCH'] + '/desi/bluebump/thrudip/redrock/zbest-64-{}.fits'.format(tile)
 
   # Corresponding Truth file.
-  ttargets = root + '/targets/{}/{}/truth-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
+  # ttargets = root + '/targets/{}/{}/truth-64-{}.fits'.format(np.int(np.float(tile) / 100.), tile, tile)
   
-  result   = {} 
+  result = {} 
   
   # 'Dip', 'Redwood'
   for x, label in zip([master, degrade], ['Master', 'Degraded']):
@@ -122,7 +123,7 @@ for i, tile in enumerate(tiles):
 
     trusort       = np.ma.array(yindex, mask=mask)
 
-    # Spec. - matched TARGETIDs in truth. 
+    # Spec. matched TARGETIDs in truth. 
     _             = tids[trusort][~trusort.mask]
 
     # Corresponding redshifts.
@@ -131,6 +132,9 @@ for i, tile in enumerate(tiles):
     # Objects that weren't in the truth tables.  Standards?
     zzmask        = np.isin(ztids, _)
 
+    # for i, x in enumerate(ztids[zzmask]):
+    #   print(x, _[i])
+    
     # Check that TID matches between truth table and spec. tile was successful.
     assert  np.all(ztids[zzmask] == _)
 
@@ -152,7 +156,6 @@ for i, tile in enumerate(tiles):
 
     print('Number of targets: {}'.format(len(result[label]['ztids'])))
     print('Number of warnings for {}: {}'.format(label, np.count_nonzero(zwarn)))
-
     
   # Check that no funny sorting happened between the Master and Degraded runs. 
   assert  np.all(result['Degraded']['ztids'] == result['Master']['ztids'])
@@ -162,12 +165,16 @@ for i, tile in enumerate(tiles):
 
   _                =  Table(truth[isin], copy=True)
   _.sort('TARGETID')
-  
+
+  # Args. to sort the spec. tile by targetid.
   inds             =  np.argsort(result['Master']['ztids'])
 
   # Calculate the significance of the redshift shift between Degraded and Master.                                                                                                                                      
   sig              =  significance(result['Degraded']['zz'], result['Master']['zz'], result['Master']['zerr'])
 
+  # Double check right matching.  
+  assert  np.all(_['TARGETID'] == result['Master']['ztids'][inds])
+  
   # Update the truth table with the significance of the redshift shift. 
   _['SIG']         =  sig[inds]
 
@@ -181,15 +188,17 @@ for i, tile in enumerate(tiles):
   
   # Define the reference sample. 
   _['INSAMPLE']    = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
-  _['FAIL']        = _['INSAMPLE'] & (_['SIG'] > 0.0)
+
+  # Remember: SIG is log10(significance)!
+  _['FAIL']        =  _['INSAMPLE'] & (_['SIG'] > 0.0)
   
   print()
   print('Solved for: {}'.format(i))
   print(_)
   
-  is_elg       = [x == 'ELG' for x in _['TEMPLATETYPE']]
-  is_lrg       = [x == 'LRG' for x in _['TEMPLATETYPE']]
-  is_qso       = [x == 'QSO' for x in _['TEMPLATETYPE']]
+  is_elg = [x == 'ELG' for x in _['TEMPLATETYPE']]
+  is_lrg = [x == 'LRG' for x in _['TEMPLATETYPE']]
+  is_qso = [x == 'QSO' for x in _['TEMPLATETYPE']]
 
   if i == 0:
     # Targets for which redrock issued a warning.
@@ -217,6 +226,8 @@ for i, tile in enumerate(tiles):
 
   results.append(_)
 
+  ##  break
+  
 ##  Sample stats.
 ngal      = 0
 
@@ -234,6 +245,22 @@ dnelg     = 0
 dnqso     = 0
 dnstar    = 0
 
+##  Check on all available TEMPLATETYPES.
+##
+##  TEMPLATETYPE
+##  ------------
+##       ELG
+##       LRG
+##       QSO
+##       STAR
+
+utemps, cnts = np.unique(_['TEMPLATETYPE'], return_counts=True)
+
+print('\n\n')
+print(utemps)
+print(cnts)
+print('\n\n')
+
 for i, _ in enumerate(results):
   # print('\n\nSolved for {}.'.format(i))
   ngal   += np.count_nonzero(_['INSAMPLE'])
@@ -244,11 +271,11 @@ for i, _ in enumerate(results):
   nqso   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')))
   nstar  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR')))
 
-  dnbgs  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'BGS')))
-  dnlrg  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'LRG')))
-  dnelg  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'ELG')))
-  dnqso  += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'QSO')))
-  dnstar += np.count_nonzero((_['FAIL'] & (_['TEMPLATETYPE'] == 'STAR')))
+  dnbgs  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'BGS')))
+  dnlrg  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'LRG')))
+  dnelg  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'ELG')))
+  dnqso  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'QSO')))
+  dnstar += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'STAR')))
 
 ## 
 print('\n\nSummary stats:')
