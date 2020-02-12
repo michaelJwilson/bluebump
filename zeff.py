@@ -360,13 +360,11 @@ print('# STARs in sample with a fail and smaller zerr: {}'.format(bnstar))
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
   
 pl.xlim(-0.02, 2.1)
-pl.ylim( 0.00, 3.0)
+pl.ylim(-2.00, 5.0)
 
 pl.xlabel(r'$z_{\rm{True}}$')
 
-# pl.ylabel(r"$\log_{10}(|z' - z| \ / \ z_{\rm{err}})$")
-pl.ylabel(r"$(\sigma{_z}' / \sigma{_z})$")
-
+pl.ylabel(r"$\log_{10}(|z' - z| \ / \ z_{\rm{err}})$")
 
 pl.legend(loc=1, frameon=True)
 

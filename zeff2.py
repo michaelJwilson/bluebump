@@ -183,22 +183,22 @@ for i, tile in enumerate(tiles):
   _['DEGRDEZERR']  =  result['Degraded']['zerr'][inds]
 
   _['MASTERZWARN'] =  result['Master']['zwarn'][inds]
-
+  _['DEGRDEZWARN'] =  result['Degraded']['zwarn'][inds]
+  
   # Remove white space.                                                                                                                                                                                              
   _['TEMPLATETYPE'] = [x.strip() for x in _['TEMPLATETYPE']]
   
   # Define the reference sample. 
-  _['INSAMPLE']    = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
-
+  _['IN_MASTER']       = (_['MASTERZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
+  _['IN_DEGRDE']       = (_['DEGRDEZWARN'] == 0) & (_['TRUEZ'] <= 2.1)
+  
   # Remember: SIG is log10(significance)!
-  _['FAIL']        =  _['INSAMPLE'] & (_['SIG'] > 0.0)
+  _['NATURALV_MASTER'] = np.abs(_['MASTERZ'] - _['TRUEZ']) / (1. + _['TRUEZ'])
+  _['NATURALV_DEGRDE'] = np.abs(_['DEGRDEZ'] - _['TRUEZ']) / (1. + _['TRUEZ'])
 
-  # redshift shifted with respect to original error bar, but still significant wrt new zerror?
-  _['NSIG']        =  significance(result['Degraded']['zz'], result['Master']['zz'], result['Degraded']['zerr'])[inds]
-  _['GRACEFAIL']   =  _['FAIL'] & (_['NSIG'] < 0.0)
-
-  #
-  _['BADZERR']     =  _['FAIL'] & (_['MASTERZERR'] > _['DEGRDEZERR'])
+  ##  1000. km/s.
+  _['CATFAIL_MASTER']  = _['IN_MASTER'] & (_['NATURALV_MASTER'] > 0.003)
+  _['CATFAIL_DEGRDE']  = _['IN_DEGRDE'] & (_['NATURALV_DEGRDE'] > 0.003)
   
   print()
   print('Solved for: {}'.format(i))
@@ -214,39 +214,38 @@ for i, tile in enumerate(tiles):
 
   results.append(_)
 
-  if i > 150:
-    break
+  #if i > 20:
+  #  break
   
 ##  Sample stats.
-ngal      = 0
+##  -------------------------
+##  Counts of the simulated galaxies in each target class for MASTERZWARN == 0.   
+m_nbgs    = 0
+m_nlrg    = 0
+m_nelg    = 0
+m_nqso    = 0
+m_nstar   = 0
 
-##  Counts of the simulated galaxies in each target class.   
-nbgs      = 0
-nlrg      = 0
-nelg      = 0
-nqso      = 0
-nstar     = 0
+##  Counts of the simulated galaxies in each target class for DEGRADEDZWARN == 0.                                                                                                                                                 
+d_nbgs    = 0
+d_nlrg    = 0
+d_nelg    = 0
+d_nqso    = 0
+d_nstar   = 0
 
-##  Same, but for this with a sig. shift in their redshift due to the blue dip.  
-dnbgs     = 0
-dnlrg     = 0
-dnelg     = 0
-dnqso     = 0
-dnstar    = 0
+##  Catastrophic failures with respect to the MASTER z. 
+cm_nbgs   = 0
+cm_nlrg   = 0
+cm_nelg   = 0
+cm_nqso   = 0
+cm_nstar  = 0
 
-##  Failed by definition above, but gracefully: z bias is not significant by new zerr.
-snbgs     = 0
-snlrg     = 0
-snelg     = 0
-snqso     = 0
-snstar    = 0
-
-##  zerr greater with degraded throughput than master. 
-bnbgs     = 0
-bnlrg     = 0
-bnelg     = 0
-bnqso     = 0
-bnstar    = 0
+##  Catastrophic failures with respect to the DEGRADED z.                                                                                                                                                                        
+cd_nbgs   = 0
+cd_nlrg   = 0
+cd_nelg   = 0
+cd_nqso   = 0
+cd_nstar  = 0
 
 ##  Check on all available TEMPLATETYPES.
 ##
@@ -265,72 +264,58 @@ print(cnts)
 print('\n\n')
 
 for i, _ in enumerate(results):
-  # print('\n\nSolved for {}.'.format(i))
-  ngal   += np.count_nonzero(_['INSAMPLE'])
+  m_nbgs   += np.count_nonzero((_['IN_MASTER']      & (_['TEMPLATETYPE'] == 'BGS')))
+  m_nlrg   += np.count_nonzero((_['IN_MASTER']      & (_['TEMPLATETYPE'] == 'LRG')))
+  m_nelg   += np.count_nonzero((_['IN_MASTER']      & (_['TEMPLATETYPE'] == 'ELG')))
+  m_nqso   += np.count_nonzero((_['IN_MASTER']      & (_['TEMPLATETYPE'] == 'QSO')))
+  m_nstar  += np.count_nonzero((_['IN_MASTER']      & (_['TEMPLATETYPE'] == 'STAR')))
 
-  nbgs   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'BGS')))
-  nlrg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'LRG')))
-  nelg   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'ELG')))
-  nqso   += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'QSO')))
-  nstar  += np.count_nonzero((_['INSAMPLE'] & (_['TEMPLATETYPE'] == 'STAR')))
+  d_nbgs   += np.count_nonzero((_['IN_DEGRDE']      & (_['TEMPLATETYPE'] == 'BGS')))
+  d_nlrg   += np.count_nonzero((_['IN_DEGRDE']      & (_['TEMPLATETYPE'] == 'LRG')))
+  d_nelg   += np.count_nonzero((_['IN_DEGRDE']      & (_['TEMPLATETYPE'] == 'ELG')))
+  d_nqso   += np.count_nonzero((_['IN_DEGRDE']      & (_['TEMPLATETYPE'] == 'QSO')))
+  d_nstar  += np.count_nonzero((_['IN_DEGRDE']      & (_['TEMPLATETYPE'] == 'STAR')))
+  
+  cm_nbgs  += np.count_nonzero((_['CATFAIL_MASTER'] & (_['TEMPLATETYPE'] == 'BGS')))
+  cm_nlrg  += np.count_nonzero((_['CATFAIL_MASTER'] & (_['TEMPLATETYPE'] == 'LRG')))
+  cm_nelg  += np.count_nonzero((_['CATFAIL_MASTER'] & (_['TEMPLATETYPE'] == 'ELG')))
+  cm_nqso  += np.count_nonzero((_['CATFAIL_MASTER'] & (_['TEMPLATETYPE'] == 'QSO')))
+  cm_nstar += np.count_nonzero((_['CATFAIL_MASTER'] & (_['TEMPLATETYPE'] == 'STAR')))
 
-  dnbgs  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'BGS')))
-  dnlrg  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'LRG')))
-  dnelg  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'ELG')))
-  dnqso  += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'QSO')))
-  dnstar += np.count_nonzero((    _['FAIL'] & (_['TEMPLATETYPE'] == 'STAR')))
-
-  snbgs  += np.count_nonzero((    _['GRACEFAIL'] & (_['TEMPLATETYPE'] == 'BGS')))
-  snlrg  += np.count_nonzero((    _['GRACEFAIL'] & (_['TEMPLATETYPE'] == 'LRG')))
-  snelg  += np.count_nonzero((    _['GRACEFAIL'] & (_['TEMPLATETYPE'] == 'ELG')))
-  snqso  += np.count_nonzero((    _['GRACEFAIL'] & (_['TEMPLATETYPE'] == 'QSO')))
-  snstar += np.count_nonzero((    _['GRACEFAIL'] & (_['TEMPLATETYPE'] == 'STAR')))
-
-  bnbgs  += np.count_nonzero((    _['BADZERR'] & (_['TEMPLATETYPE'] == 'BGS')))
-  bnlrg  += np.count_nonzero((    _['BADZERR'] & (_['TEMPLATETYPE'] == 'LRG')))
-  bnelg  += np.count_nonzero((    _['BADZERR'] & (_['TEMPLATETYPE'] == 'ELG')))
-  bnqso  += np.count_nonzero((    _['BADZERR'] & (_['TEMPLATETYPE'] == 'QSO')))
-  bnstar += np.count_nonzero((    _['BADZERR'] & (_['TEMPLATETYPE'] == 'STAR')))
+  cd_nbgs  += np.count_nonzero((_['CATFAIL_DEGRDE'] & (_['TEMPLATETYPE'] == 'BGS')))
+  cd_nlrg  += np.count_nonzero((_['CATFAIL_DEGRDE'] & (_['TEMPLATETYPE'] == 'LRG')))
+  cd_nelg  += np.count_nonzero((_['CATFAIL_DEGRDE'] & (_['TEMPLATETYPE'] == 'ELG')))
+  cd_nqso  += np.count_nonzero((_['CATFAIL_DEGRDE'] & (_['TEMPLATETYPE'] == 'QSO')))
+  cd_nstar += np.count_nonzero((_['CATFAIL_DEGRDE'] & (_['TEMPLATETYPE'] == 'STAR')))
   
 ## 
 print('\n\nSummary stats:')
-print('# galaxies in z <= 2.1 sample (no ZWARN): {}'.format(ngal))
+print('# galaxies in z <= 2.1 sample (no MASTER ZWARN).')
 print()
-print('# BGSs  in sample: {}'.format(nbgs))
-print('# LRGs  in sample: {}'.format(nlrg))
-print('# ELGs  in sample: {}'.format(nelg))
-print('# QSOs  in sample: {}'.format(nqso))
-print('# STARs in sample: {}'.format(nstar))
+print('# BGSs  in sample: {}'.format(m_nbgs))
+print('# LRGs  in sample: {}'.format(m_nlrg))
+print('# ELGs  in sample: {}'.format(m_nelg))
+print('# QSOs  in sample: {}'.format(m_nqso))
+print('# STARs in sample: {}'.format(m_nstar))
 print()
-print('# BGSs  in sample with redshift bias: {}'.format(dnbgs))
-print('# LRGs  in sample with redshift bias: {}'.format(dnlrg))      
-print('# ELGs  in sample with redshift bias: {}'.format(dnelg))
-print('# QSOs  in sample with redshift bias: {}'.format(dnqso))
-print('# STARs in sample with redshift bias: {}'.format(dnstar))
+print('# galaxies in z <= 2.1 sample (no DEGRADED ZWARN).')
+print('# BGSs  in sample: {}'.format(d_nbgs))
+print('# LRGs  in sample: {}'.format(d_nlrg))
+print('# ELGs  in sample: {}'.format(d_nelg))
+print('# QSOs  in sample: {}'.format(d_nqso))
+print('# STARs in sample: {}'.format(d_nstar))
 print()
-print('# BGSs  in sample with redshift bias %: {}'.format(100. * dnbgs  / nbgs))
-print('# LRGs  in sample with redshift bias %: {}'.format(100. * dnlrg  / nlrg))
-print('# ELGs  in sample with redshift bias %: {}'.format(100. * dnelg  / nelg))
-print('# QSOs  in sample with redshift bias %: {}'.format(100. * dnqso  / nqso))
-print('# STARs in sample with redshift bias %: {}'.format(100. * dnstar / nstar))
+print('# BGSs  master cat. fails: {}'.format(cm_nbgs))
+print('# LRGs  master cat. fails: {}'.format(cm_nlrg))      
+print('# ELGs  master cat. fails: {}'.format(cm_nelg))
+print('# QSOs  master cat. fails: {}'.format(cm_nqso))
+print('# STARs master cat. fails: {}'.format(cm_nstar))
 print()
-print('# BGSs  in sample with a graceful fail: {}'.format(snbgs))
-print('# LRGs  in sample with a graceful fail: {}'.format(snlrg))
-print('# ELGs  in sample with a graceful fail: {}'.format(snelg))
-print('# QSOs  in sample with a graceful fail: {}'.format(snqso))
-print('# STARs in sample with a graceful fail: {}'.format(snstar))
-print()
-print('# BGSs  in sample with a graceful fail %: {}'.format(100. * snbgs  / dnbgs))
-print('# LRGs  in sample with a graceful fail %: {}'.format(100. * snlrg  / dnlrg))
-print('# ELGs  in sample with a graceful fail %: {}'.format(100. * snelg  / dnelg))
-print('# QSOs  in sample with a graceful fail %: {}'.format(100. * snqso  / dnqso))
-print('# STARs in sample with a graceful fail %: {}'.format(100. * snstar / dnstar))
-print()
-print('# BGSs  in sample with a fail and smaller zerr: {}'.format(bnbgs))
-print('# LRGs  in sample with a fail and smaller zerr: {}'.format(bnlrg))
-print('# ELGs  in sample with a fail and smaller zerr: {}'.format(bnelg))
-print('# QSOs  in sample with a fail and smaller zerr: {}'.format(bnqso))
-print('# STARs in sample with a fail and smaller zerr: {}'.format(bnstar))
+print('# BGSs  degraded cat. fails: {}'.format(cd_nbgs))
+print('# LRGs  degraded cat. fails: {}'.format(cd_nlrg))
+print('# ELGs  degraded cat. fails: {}'.format(cd_nelg))
+print('# QSOs  degraded cat. fails: {}'.format(cd_nqso))
+print('# STARs degraded cat. fails: {}'.format(cd_nstar))
 
 ##
 pl.axhline(y=0.0, xmin=0, xmax=1, c='k')
@@ -352,7 +337,7 @@ ax.grid(False)
 
 plt.tight_layout()
 
-pl.savefig('plots/zeff2.pdf'.format(sig))
+pl.savefig('plots/zeff2.pdf')
 
 ##
 pl.clf()
