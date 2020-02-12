@@ -208,38 +208,14 @@ for i, tile in enumerate(tiles):
   is_lrg = [x == 'LRG' for x in _['TEMPLATETYPE']]
   is_qso = [x == 'QSO' for x in _['TEMPLATETYPE']]
 
-
-  sig    = 'NSIG'
-  
-  if i == 0:
-    # Targets for which redrock issued a warning.
-    pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _[sig][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label=labels[0], lw=0)
-    
-  else:
-    # Drop the label after the first. 
-    pl.plot(_['TRUEZ'][_['MASTERZWARN']  > 0], _[sig][_['MASTERZWARN']  > 0], marker='x', c='r', markersize=3, label='', lw=0)
-    
-  # All other targets.
-  pl.plot(_['TRUEZ'][_['MASTERZWARN'] == 0], _[sig][_['MASTERZWARN'] == 0], marker='x', c='k', markersize=3, label='', lw=0)
-  
-  
-  for color, label in zip(['g', 'b', 'gold'], ['LRG', 'ELG', 'QSO']):
-    # For each target class, color the targets of interest (FAIL).
-    is_type =  [x == label for x in _['TEMPLATETYPE']]
-    no_warn = _['MASTERZWARN'] == 0
-    signif  = _[sig] > 0.0
-    
-    toplot  =  is_type & no_warn & signif
-
-    if i > 0:
-      label = ''
-      
-    pl.plot(_['TRUEZ'][toplot], _[sig][toplot], marker='x', c=color, markersize=3, label=label, lw=0)
+  pl.plot(_['TRUEZ'][(_['MASTERZWARN'] == 0) & is_lrg], (_['DEGRDEZERR'] / _['MASTERZERR'])[(_['MASTERZWARN'] == 0) & is_lrg], marker='x', c='r',    markersize=3, label='', lw=0)
+  pl.plot(_['TRUEZ'][(_['MASTERZWARN'] == 0) & is_elg], (_['DEGRDEZERR'] / _['MASTERZERR'])[(_['MASTERZWARN'] == 0) & is_elg], marker='x', c='b',    markersize=3, label='', lw=0)  
+  pl.plot(_['TRUEZ'][(_['MASTERZWARN'] == 0) & is_qso], (_['DEGRDEZERR'] / _['MASTERZERR'])[(_['MASTERZWARN'] == 0) & is_qso], marker='x', c='gold', markersize=3, label='', lw=0)
 
   results.append(_)
 
-  #if i > 150:
-  #  break
+  if i > 150:
+    break
   
 ##  Sample stats.
 ngal      = 0
@@ -376,7 +352,7 @@ ax.grid(False)
 
 plt.tight_layout()
 
-pl.savefig('plots/zeff_{}.pdf'.format(sig))
+pl.savefig('plots/zeff2.pdf'.format(sig))
 
 ##
 pl.clf()
